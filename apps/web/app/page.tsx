@@ -1,102 +1,149 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+'use client';
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
+import { useState } from 'react';
+
+interface ImageGridProps {
+  images: string[];
+}
+
+const ImageGrid = ({ images }: ImageGridProps) => {
+  const handleDownload = async (url: string, index: number) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `generated-image-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", padding: "16px" }}>
+      {images.map((url, index) => (
+        <div key={index} style={{ position: "relative", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <img
+            src={url}
+            alt={`image ${index + 1}`}
+            style={{ width: "100%", height: "auto", borderRadius: "8px", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", objectFit: "cover" }}
+          />
+          <button
+            onClick={() => handleDownload(url, index)}
+            style={{
+              backgroundColor: "#007BFF",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+              width: "100%",
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#0056b3"}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#007BFF"}
+          >
+            Download
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 };
 
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+
+const Home = () => {
+  const prompt = "Select your favorite programming language:";
+  const options = [
+    { label: "romit's model", value: "https://v3.fal.media/files/lion/FnLjyI4t2h7hB-1lv3q1O_pytorch_lora_weights.safetensors" },
+  ];
+
+  const [selectedOption, setSelectedOption] = useState<string>('');
+  const [imagePrompt, setImagePrompt] = useState<string>('');
+  const [urls, setUrls] = useState<string[]>(["https://v3.fal.media/files/rabbit/VLmypZTQ_kN6sSMQx2y2j_9daa8b7196074418b68fc478d292db49.jpg"]);
+
+  async function fetchImageData(lora: string, prompt: string): Promise<any> {
+    try {
+
+      const response = await fetch('/api/generate', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ lora, prompt })
+      }).then(res => res.json());
+
+      setUrls((prev) => [...prev, (response.data.images[0].url)]);
+      return response;
+    } catch (error) {
+      console.log("error");
+    }
+  }
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedOption && imagePrompt) {
+      alert(`You selected: ${selectedOption}\nImage Prompt: ${imagePrompt}`);
+    }
+
+    const data = await fetchImageData(selectedOption, imagePrompt);
+    console.log("data: ", data);
+  };
 
   return (
     <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
+      <form onSubmit={handleSubmit} style={{ padding: '16px', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '2px 2px 10px rgba(0,0,0,0.1)', maxWidth: '400px', margin: '0 auto' }}>
+        <label style={{ display: 'block', fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>{prompt}</label>
+        <select
+          value={selectedOption}
+          onChange={(e) => setSelectedOption(e.target.value)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px' }}
+        >
+          <option value="" disabled>Select an option</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <label style={{ display: 'block', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Enter Image Prompt:</label>
+        <input
+          type="text"
+          value={imagePrompt}
+          onChange={(e) => setImagePrompt(e.target.value)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px' }}
+          placeholder="Describe an image"
+        />
+
+        <button
+          type="submit"
+          style={{ width: '100%', backgroundColor: selectedOption && imagePrompt ? '#007BFF' : '#ccc', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: selectedOption && imagePrompt ? 'pointer' : 'not-allowed' }}
+          disabled={!selectedOption || !imagePrompt}
+        >
+          Submit
+        </button>
+      </form>
+      <ImageGrid images={urls} />
     </>
   );
 };
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+const Page = () => {
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turbo.build/repo/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turbo.build?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turbo.build →
-        </a>
-      </footer>
-    </div>
-  );
+  return (
+    <>
+      <Home />
+
+    </>
+  )
+
 }
+
+export default Page;
