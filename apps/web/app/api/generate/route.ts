@@ -1,5 +1,6 @@
 import { fal } from "@fal-ai/client";
 import { NextRequest, NextResponse } from "next/server";
+import { storeGeneratedImage } from "./util";
 
 type RequestData = {
   lora?: string;
@@ -12,6 +13,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as RequestData;
     const { prompt, lora } = body;
     console.log(prompt, lora);
+
+    const userId = "romitgabani1@gmail.com";
 
     if (!prompt) {
       return NextResponse.json(
@@ -40,6 +43,13 @@ export async function POST(request: NextRequest) {
 
     console.log(result.data);
     console.log(result.requestId);
+
+    await storeGeneratedImage({
+      userId,
+      url: result?.data?.images[0]?.url ?? "",
+      model: "fal-ai/flux-lora",
+      lora: lora ?? "",
+    });
 
     return NextResponse.json(result);
 

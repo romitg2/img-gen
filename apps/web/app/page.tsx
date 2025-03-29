@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getGeneratedImageForUser } from './api/images/util';
+import { GeneratedImage } from './api/images/route';
 
 interface ImageGridProps {
   images: string[];
@@ -66,6 +68,18 @@ const Home = () => {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [imagePrompt, setImagePrompt] = useState<string>('');
   const [urls, setUrls] = useState<string[]>(["https://v3.fal.media/files/rabbit/VLmypZTQ_kN6sSMQx2y2j_9daa8b7196074418b68fc478d292db49.jpg"]);
+  
+  useEffect(() => {
+    const fetchImages = async () => {
+      const images = await fetch('/api/images').then(res => res.json());
+      console.log(images);
+      if (Array.isArray(images)) {
+        setUrls((prev) => [...prev, ...images]);
+      }
+      console.log("urls: ", urls);
+    };
+    fetchImages();
+  }, []);
 
   async function fetchImageData(lora: string, prompt: string): Promise<any> {
     try {
